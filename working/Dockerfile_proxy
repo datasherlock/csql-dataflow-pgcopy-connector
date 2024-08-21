@@ -1,0 +1,30 @@
+# Use the official Apache Beam SDK image as the base image
+FROM python:3.12-slim as base
+
+# Install the required Python packages
+RUN pip install --no-cache-dir \
+    google-cloud \
+    apache-beam[gcp] \
+    sqlalchemy \
+    google-cloud-secret-manager \
+    psycopg2-binary \
+    pandas \
+    google-auth \
+    pg8000 \
+    setuptools
+
+ # Copy files from the official SDK image, including script/dependencies
+COPY --from=apache/beam_python3.12_sdk:2.58.0 /opt/apache/beam /opt/apache/beam
+RUN apt-get update && \
+    apt-get install -y wget && \
+    wget https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.12.0/cloud-sql-proxy.linux.amd64 -O cloud_sql_proxy && chmod +x cloud_sql_proxy
+
+# Set environment variables for the Cloud SQL Proxy
+ENV CLOUD_SQL_PROXY_INSTANCE_CONNECTION_NAME=datasherlock:us-central1:demo-db
+ENV CLOUD_SQL_PROXY_PORT=5432
+
+# Set the entrypoint to execute the Beam pipeline with the Cloud SQL Proxy running
+ENTRYPOINT ["/bin/bash", "-c", "./cloud_sql_proxy $CLOUD_SQL_PROXY_INSTANCE_CONNECTION_NAME --port $CLOUD_SQL_PROXY_PORT --private-ip --auto-iam-authn & /opt/apache/beam/boot"]
+
+# python main.py --job_endpoint=us-central1 --runner=PortableRunner  --environment_type=DOCKER --environment_config="us-central1-docker.pkg.dev/datasherlock/demo-gcr/dataflow/dataflow2csql:1.0"
+
