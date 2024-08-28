@@ -1,79 +1,88 @@
 
-# DataflowToCloudSQL
-#### Developed By: Jerome Rajan, Staff Solutions Consultant, Google
+# Dataflow CloudSQL PGCopy Template
 
-## Overview
+This Beam pipeline ingests CSV files from Google Cloud Storage (GCS), and efficiently loads them into a Cloud SQL PostgreSQL database using the `COPY` command. The template is designed for parallel processing, enabling you to load large datasets quickly.
 
-`DataflowToCloudSQL` is a Python-based project that integrates Apache Beam pipelines with Google Cloud SQL. 
-The project is structured to allow reading data from a GCS bucket, and writing the results to a GCP CloudSQL Postgres
-database. The primary aim of this repo is to demonstrate connecting to CloudSQL from Dataflow :
-- Using a private IP
-- Using IAM authentication
-- Without a CloudSQL Auth Proxy
+## Problem Statement
+CloudSQL currently does not allow  you to run a `gcloud sql import csv` from multiple CSV files at once. This is due to the fact that the command uses the CloudSQL Admin API which doesn't allow concurrent executions.
+This Dataflow template solves the problem by parallelizing the CSV imports through STDINs across workers and using PostgreSQL's COPY
+for fast and efficient import of CSV data.
 
-The solution uses SQLAlchemy's bulk loading capabilities in conjunction with Beam's distributed framework. 
+## Features
 
-## Project Structure
+* **Parallel Processing:** Leverages Apache Beam's capabilities to process and load data in parallel, significantly reducing load times for large datasets.
+* **CloudSQL Optimized:** Utilizes the `COPY` command, a fast and efficient method for loading data into PostgreSQL, especially for large volumes.
+* **Flexible and Configurable:**  Allows customization of parameters like:
+    * Source CSV file path pattern in GCS
+    * Delimiter used in CSV files
+    * Presence or absence of a header row in CSV files
+    * Column list to be loaded (matching the target table schema)
+    * Cloud SQL connection parameters
 
-- **common/**: Contains common utility modules used across the project.
-  - `config.ini`: Configuration file for storing database connection details and other dataflow configurations.
-  - `get_connection.py`: Module for establishing a connection to Google Cloud SQL.
-  - `Logger.py`: Module for logging throughout the application.
-  - `parse_configs.py`: Handles the parsing of the configuration file (`config.ini`).
-  - `utils.py`: Additional utility functions used across the project.
+## Prerequisites
 
-- **pipelines/**: Directory intended for storing Apache Beam pipeline definitions.
+* **Google Cloud Project:**  You'll need an active Google Cloud Project with the following APIs enabled:
+    * Dataflow API
+    * Cloud Storage API
+    * Cloud SQL Admin API 
+* **Cloud SQL Instance:** A provisioned Cloud SQL for PostgreSQL instance.
+* **Service Account:** A service account with the necessary permissions to:
+    * Read objects from the source GCS bucket.
+    * Connect to your Cloud SQL instance and write data to the database.
+* **Data in GCS:** Your CSV data should be stored in a GCS bucket.
 
-- **sinks/**: Directory intended for modules related to data sinks, such as CloudSQL
+## Getting Started
 
-- **sources/**: Directory intended for modules related to data sources.
-  - `read_from_source.py`: Module for reading data from the specified source. This is a sample record generator to demonstrate the CloudSQL write capability
+1. **Clone the Repository:** Clone this repository to your local machine.
+   ```bash
+   git clone https://github.com/your-username/dataflow-cloudsql-pgcopy.git
+   cd dataflow-cloudsql-pgcopy
+   ```
 
-- **Dockerfile**: Docker configuration for containerizing the application.
+2. **Setup Virtual Environment:**
+   ```bash
+   python3 -m venv env
+   source env/bin/activate
+   ```
 
-- **main.py**: The main entry point of the application that initializes and runs the Apache Beam pipeline.
+3. **Install Dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-- **requirements.txt**: Python dependencies required for the project.
+4. **Configuration:**
+   Update the following parameters in your execution command to match your environment and data:
 
-- **setup.py**: Script for installing the project and its dependencies.
+   * **`--source_path`:** The path to your CSV files in GCS (e.g., `gs://your-bucket/your-data/*.csv`). You can use wildcards to match multiple files.
+   * **`--delimiter`:** The integer ASCII value of the delimiter used in your CSV files. For example, use `44` for comma (`,`) and `9` for tab. 
+   * **`--header`:** Set to `TRUE` if your CSV files have a header row; otherwise, set to `FALSE`.
+   * **`--column_list`:** A comma-separated list of column names in your CSV files, corresponding to the target table schema.
+   * **`--instance_connection_name`:**  The connection name of your Cloud SQL instance in the format `project-id:region:instance-id`.
+   * **`--database_name`:** The name of the database in your Cloud SQL instance where the data will be loaded.
+   * **`--database_user`:** The username of the Cloud SQL user (or service account email without the `.gserviceaccount.com` suffix) authorized to access the database.
+   * **`--table_name`:**  The name of the target table (including schema, if applicable) where the data will be loaded.
+   * **`--runner`:** The Apache Beam runner. For testing use `DirectRunner` . For running on Google Cloud use `DataflowRunner`.
 
-## Configuration
 
-The application uses a `config.ini` file located in the `common/` directory for configuration. This file should contain necessary details such as database credentials, connection strings, and other configurable parameters.
+5. **Running the Pipeline:** 
+[Click Here for details on building and executing the template](./flex_template/README.md)
 
-Example `config.ini`:
+## How it Works
 
-```ini
-[cloudsql]
-instance=project:region:cloudsql-instance
-database=postgres
-schema=public
-user=dataflow-sa@project_name.iam
-password=''
-batch=10000
+1. **File Pattern Matching:** The pipeline starts by identifying all CSV files in GCS that match the provided `source_path` pattern.
+2. **Parallel Reads:** Apache Beam reads the matched CSV files in parallel, distributing the workload for efficient processing.
+3. **Cloud SQL `COPY` Operation:**  The pipeline uses the `COPY` command to efficiently stream data from the CSV files directly into the specified Cloud SQL table.
 
-[dataflow]
-project=project_name
-temp_location=""
-staging_location=""
-region=us-central1
-service_account=dataflow-sa@project_name.iam.gserviceaccount.com
+## Security
 
-[source]
-src_path=gs://bucket_name/df_big/output*
-```
+This template prioritizes secure data handling:
 
-Copy the config.ini to a GCS path
-```
-gcloud storage cp common/config.ini gs://bucket_name/dataflowtocsql/config/config.ini
-```
+* **IAM-Based Authentication:** Leverages Google Cloud's Identity and Access Management (IAM) for secure authentication to both GCS and Cloud SQL. 
+* **Private IP:** Connects to your Cloud SQL instance using a private IP address, enhancing security by keeping traffic within Google's internal network. 
 
-To build image using `gcloud builds` - 
-```
-gcloud builds submit --tag us-central1-docker.pkg.dev/project_name/repo_name/dataflow/dataflow2csql:1.0
-```
+## Important Notes
 
-Run the job with DataflowRunner - 
-```
-python main.py --config_path="gs://bucket_name/dataflowtocsql/config/config.ini" --runner=DataflowRunner --sdk_container_image="us-central1-docker.pkg.dev/project_name/repo_name/dataflow/dataflow2csql:2.0" --setup_file=./setup.py
-```
+* **Permissions:** Ensure that the service account used to run the pipeline has the required permissions for both GCS and Cloud SQL.
+* **Data Types:** The `COPY` command in PostgreSQL is sensitive to data types. Ensure that the data types in your CSV files match the schema of your target table in Cloud SQL to avoid errors during data loading.
+
+This README provides a comprehensive guide to get you started with the Dataflow CloudSQL PGCopy template. Let me know if you have any other questions.
