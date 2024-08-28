@@ -8,17 +8,16 @@ from common.Logger import Logger
 
 
 class GetConnection:
-    def __init__(self, config):
+    def __init__(self, database_user, database_name, instance_connection_name):
         self.postgres_connection_string = None
         self.credentials = None
         self.engine = None
         self.connection = None
         self.db_password = None
-        self.db_user = None
-        self.db_name = None
-        self.db_instance = None
-        self.enable_iam_auth = True
-        self.config = config
+        self.db_user = database_user
+        self.db_name = database_name
+        self.db_instance = instance_connection_name
+        self.enable_iam_auth = True  # Assuming IAM-based authentication is always enabled
         self.logger = Logger().get_logger()
 
     def _get_iam_token(self):
@@ -29,12 +28,6 @@ class GetConnection:
         return self.credentials.token
 
     def _get_connection(self):
-        import pg8000
-        config = self.config
-        self.db_instance = config.get_config("cloudsql", "instance")
-        self.db_name = config.get_config("cloudsql", "database")
-        self.db_user = config.get_config("cloudsql", "user")
-        self.db_password = config.get_config("cloudsql", "password")
         self.logger.info(f"Connecting to database instance - {self.db_instance}")
         connector = Connector()
         try:
@@ -51,19 +44,9 @@ class GetConnection:
             self.logger.error(e)
             raise e
         self.logger.info(f"Connected to database instance - {self.db_instance}")
-        # iam_token = self.get_iam_token()
-        # self.connection = pg8000.Connection(
-        #     user=self.db_user,
-        #     host="172.17.64.3",
-        #     port="5432",
-        #     database=self.db_name,
-        #     password=iam_token,
-        #     ssl_context=None  # Ensure the connection uses SSL
-        # )
         return self.connection
 
     def get_engine(self):
-        import pg8000
         self.engine = sqlalchemy.create_engine(
             "postgresql+pg8000://",
             creator=self._get_connection,
