@@ -1,11 +1,7 @@
-google-cloud
-apache-beam[gcp]==2.58.0
-sqlalchemy
-google-cloud-secret-manager
-psycopg2-binary
-pandas
+apache-beam[gcp]==2.58.1
+sqlalchemy~=2.0.32
 google-auth
-pg8000
-setuptools
-google-cloud-storage
+pg8000~=1.31.2
+setuptools~=73.0.1
 cloud-sql-python-connector
+google-cloud-storage

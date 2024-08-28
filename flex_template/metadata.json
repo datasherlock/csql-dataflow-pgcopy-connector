@@ -1,0 +1,46 @@
+{
+  "name": "Dataflow Template for Parallel COPY of multiple CSVs to CloudSQL PostgreSQL",
+  "description": "This template can be used to load multiple CSVs in parallel into PostgreSQL CloudSQL.",
+  "parameters": [
+    {
+      "name": "source_path",
+      "label": "Source Path",
+      "helpText": "The source path in GCS containing the CSV files to be loaded. Use a regex to match multiple files"
+    },
+    {
+      "name": "delimiter",
+      "label": "CSV Delimiter's ASCII value",
+      "helpText": "The integer ASCII value of the character used to separate fields in the CSV files (e.g., comma, tab)."
+    },
+    {
+      "name": "header",
+      "label": "CSV Header Row",
+      "helpText": "Indicates whether the CSV files contain a header row (TRUE or FALSE)."
+    },
+    {
+      "name": "column_list",
+      "label": "CSV Column List",
+      "helpText": "A comma-separated list of column names corresponding to the fields in the CSV files. This should match the target table schema."
+    },
+    {
+      "name": "instance_connection_name",
+      "label": "CloudSQL instance connection name",
+      "helpText": "The CloudSQL instance connection name that is in the format project_id:region:instance_id"
+    },
+    {
+      "name": "database_name",
+      "label": "PostgreSQL Database Name",
+      "helpText": "The name of the target PostgreSQL database in Cloud SQL where the data will be loaded."
+    },
+    {
+      "name": "database_user",
+      "label": "The user or the service account (without the .gserviceaccount.com suffix)",
+      "helpText": "The user or IAM service account email to use for connecting to the Cloud SQL instance."
+    },
+    {
+      "name": "table_name",
+      "label": "Target table name qualified with a schema",
+      "helpText": "The name of the target table in PostgreSQL where the CSV data will be loaded. This should be in the format schema_name.table_name"
+    }
+  ]
+}

@@ -11,61 +11,55 @@ from common.get_connection import GetConnection
 
 
 class CopyCsvToPostgres(beam.DoFn):
-    def __init__(self, config):
-        self.connection_string = None
+    def __init__(self, args):
         self.engine = None
-        self.connection = None
-        self.config = config
-        self.table_name = config.get_config("cloudsql", "table_name")
-        self.delimiter = config.get_config("source", "delimiter")
-        self.header = config.get_config("source", "header")
-        self.columns = config.get_config("source", "column_list")
-        self.instance_name = config.get_config("cloudsql", "instance")
+        self.instance_connection_name = args.instance_connection_name
+        self.database_name = args.database_name
+        self.database_user = args.database_user
+        self.table_name = args.table_name
+        self.delimiter = args.delimiter
+        self.header = args.header
+        self.columns = args.column_list
         self.logger = Logger().get_logger()
+        self.args = args
 
     def start_bundle(self):
-        conn = GetConnection(self.config)
-        # self.connection = conn.get_engine().connect()
+        conn = GetConnection(database_user=self.database_user, database_name=self.database_name, instance_connection_name = self.instance_connection_name)
         self.engine = conn.get_engine()
-        self.logger = Logger().get_logger()
+        self.logger.info("Getting Connection Pool...")
 
     def copy_data_to_table(self, csv_buffer):
-        start_time = datetime.now()  # Capture the start time
+        start_time = datetime.now()
         source_file = CSV(self.delimiter, self.header, self.columns)
         self.logger.info(f"Starting copy operation at {start_time}")
+
         connection = self.engine.raw_connection()
         cursor = connection.cursor()
-        # cursor.execute(f"TRUNCATE TABLE {self.table_name};") # This hints PG to not use WAL
+
         cursor.execute(f"""
             COPY {self.table_name} ({source_file.columns}) FROM STDIN WITH (FORMAT CSV, DELIMITER E'{chr(source_file.delimiter)}', HEADER {source_file.header})
         """, stream=csv_buffer)
         connection.commit()
         cursor.close()
 
-        end_time = datetime.now()  # Capture the end time
+        end_time = datetime.now()
         self.logger.info(f"Completed copy operation at {end_time}")
         self.logger.info(f"Total time taken for copy operation: {end_time - start_time}")
 
     def process(self, element):
         gcs_path = element.metadata.path
-        # Download the CSV file from GCS
         storage_client = storage.Client()
         bucket_name, file_path = gcs_path.replace("gs://", "").split("/", 1)
         bucket = storage_client.bucket(bucket_name)
         blob = bucket.blob(file_path)
         file_content = blob.download_as_text()
 
-        # The cursor.copy_expert method in the psycopg2 library allows you to use custom SQL commands with the COPY
-        # operation. When using COPY FROM STDIN, PostgreSQL expects the input data to be streamed as if it were being
-        # read from a standard input or a file. StringIO is an in-memory stream that behaves like a file object and
-        # establishes compatibility with psycopg2 copy_expert
         buffer = StringIO()
         buffer.write(file_content)
         buffer.seek(0)
 
-        # Copy the data from the buffer to the PostgreSQL table
         self.copy_data_to_table(buffer)
 
     def finish_bundle(self):
-        if self.connection:
-            self.connection.close()
+        if self.engine:
+            self.engine.dispose()

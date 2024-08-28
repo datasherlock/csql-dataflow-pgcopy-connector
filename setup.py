@@ -1,16 +1,12 @@
 import setuptools
 
 setuptools.setup(
-    name='DataflowToCloudSQL',
+    name='dataflow-cloudsql-pgcopy',
     version='0.1',
     packages=setuptools.find_packages(),
-    url='',
+    url='www.jeromerajan.com',
     license='',
-    author='datasherlock',
-    author_email='',
-    description='',
-    package_data={
-          'DataflowToCloudSQL': ['common/*.ini'],
-       },
-    include_package_data=True,
+    author='Jerome Rajan',
+    author_email='contact@jeromerajan.com',
+    description='This template can be used to load multiple CSVs in parallel into PostgreSQL CloudSQL.'
 )
