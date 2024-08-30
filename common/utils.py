@@ -1,6 +1,7 @@
 import argparse
 from google.cloud import storage
 from common.Logger import Logger
+from common.get_connection import GetConnection
 
 logger = Logger().get_logger()
 
@@ -79,6 +80,7 @@ def parse_args():
     )
 
     return parser
+
 
 
 def batch_elements(elements, batch_size=1000):

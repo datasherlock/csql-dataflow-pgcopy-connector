@@ -1,12 +1,14 @@
 
-# Dataflow CloudSQL PGCopy Template
+# CSV To CloudSQL Dataflow Template
+#### Author: Jerome Rajan
 
 This Beam pipeline ingests CSV files from Google Cloud Storage (GCS), and efficiently loads them into a Cloud SQL PostgreSQL database using the `COPY` command. The template is designed for parallel processing, enabling you to load large datasets quickly.
 
 ## Problem Statement
-CloudSQL currently does not allow  you to run a `gcloud sql import csv` from multiple CSV files at once. This is due to the fact that the command uses the CloudSQL Admin API which doesn't allow concurrent executions.
-This Dataflow template solves the problem by parallelizing the CSV imports through STDINs across workers and using PostgreSQL's COPY
-for fast and efficient import of CSV data.
+Cloud SQL currently does not support running the `gcloud sql import csv` command with multiple CSV files simultaneously. 
+This limitation arises because the command relies on the Cloud SQL Admin API, which does not allow concurrent executions. 
+This Dataflow template addresses the issue by parallelizing the CSV imports across workers using STDIN and leveraging PostgreSQL's `COPY` command for fast and efficient data import.
+
 
 ## Features
 
