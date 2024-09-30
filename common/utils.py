@@ -80,13 +80,3 @@ def parse_args():
 
     return parser
 
-
-def batch_elements(elements, batch_size=1000):
-    batch = []
-    for element in elements:
-        batch.append(element)
-        if len(batch) >= batch_size:
-            yield batch
-            batch = []
-    if batch:
-        yield batch
