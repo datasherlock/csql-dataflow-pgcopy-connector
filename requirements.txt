@@ -4,4 +4,3 @@ google-auth
 pg8000~=1.31.2
 setuptools~=73.0.1
 cloud-sql-python-connector
-google-cloud-storage
